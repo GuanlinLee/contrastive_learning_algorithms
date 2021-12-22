@@ -61,7 +61,7 @@ class DenseNet(nn.Module):
 
         self.dense4 = self._make_dense_layers(block, num_planes, nblocks[3])
         num_planes += nblocks[3]*growth_rate
-
+        self.avg_pool = nn.AdaptiveAvgPool2d((1, 1))
         self.bn = nn.BatchNorm2d(num_planes)
         self.fc = nn.Linear(num_planes, num_classes)
 
@@ -78,7 +78,7 @@ class DenseNet(nn.Module):
         out = self.trans2(self.dense2(out))
         out = self.trans3(self.dense3(out))
         out = self.dense4(out)
-        out = F.avg_pool2d(F.relu(self.bn(out)), 4)
+        out = self.avg_pool(F.relu(self.bn(out)))
         out = out.view(out.size(0), -1)
         if feature_only:
             return out

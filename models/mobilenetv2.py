@@ -55,7 +55,7 @@ class MobileNetV2(nn.Module):
         self.conv2 = nn.Conv2d(320, 1280, kernel_size=1, stride=1, padding=0, bias=False)
         self.bn2 = nn.BatchNorm2d(1280)
         self.fc = nn.Linear(1280, num_classes)
-
+        self.avg_pool = nn.AdaptiveAvgPool2d((1, 1))
     def _make_layers(self, in_planes):
         layers = []
         for expansion, out_planes, num_blocks, stride in self.cfg:
@@ -70,7 +70,7 @@ class MobileNetV2(nn.Module):
         out = self.layers(out)
         out = F.relu(self.bn2(self.conv2(out)))
         # NOTE: change pooling kernel_size 7 -> 4 for CIFAR10
-        out = F.avg_pool2d(out, 4)
+        out = self.avg_pool(out)
         out = out.view(out.size(0), -1)
         if feature_only:
             return out

@@ -48,6 +48,7 @@ class ResNeXt(nn.Module):
         self.layer1 = self._make_layer(num_blocks[0], 1)
         self.layer2 = self._make_layer(num_blocks[1], 2)
         self.layer3 = self._make_layer(num_blocks[2], 2)
+        self.avg_pool = nn.AdaptiveAvgPool2d((1, 1))
         # self.layer4 = self._make_layer(num_blocks[3], 2)
         self.fc = nn.Linear(cardinality*bottleneck_width*8, num_classes)
 
@@ -67,7 +68,7 @@ class ResNeXt(nn.Module):
         out = self.layer2(out)
         out = self.layer3(out)
         # out = self.layer4(out)
-        out = F.avg_pool2d(out, 8)
+        out = self.avg_pool(out)
         out = out.view(out.size(0), -1)
         if feature_only:
             return out
