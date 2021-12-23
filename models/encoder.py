@@ -72,10 +72,14 @@ class MoCo(nn.Module):
 		self.ptr = (self.ptr + self.batch_size) % self.K
 		self.queue.requires_grad = False
 
-	def forward(self, *args, prints=False):
-
-		return self.moco_forward(*args, prints=prints)
-
+	def forward(self, *args, feature_only=False, prints=False):
+		if feature_only:
+			return self.feature_forward(*args)
+		else:
+			return self.moco_forward(*args, prints=prints)
+	def feature_forward(self, q):
+		q_enc = self.encoder_q(q, True)  # queries: NxC
+		return q_enc
 	def moco_forward(self, q, k, prints=False):
 		""" moco phase forward pass """
 		print('q in', q.shape) if prints else None
@@ -128,10 +132,13 @@ class Barlow_Twins(nn.Module):
 		self.f_fc = self.f.fc
 		self.f.fc = Dummy()
 
-	def forward(self, x):
-		x_f = self.f(x)
-		out = self.g(x_f)
-		return F.normalize(x_f, dim=-1), F.normalize(out, dim=-1)
+	def forward(self, x, feature_only=False):
+		if feature_only:
+			return self.f(x, True)
+		else:
+			x_f = self.f(x)
+			out = self.g(x_f)
+			return F.normalize(x_f, dim=-1), F.normalize(out, dim=-1)
 
 #SimCLR
 class SimCLR(nn.Module):
@@ -146,10 +153,13 @@ class SimCLR(nn.Module):
 		self.f_fc = self.f.fc
 		self.f.fc = Dummy()
 
-	def forward(self, x):
-		x_f = self.f(x)
-		out = self.g(x_f)
-		return F.normalize(x_f, dim=-1), F.normalize(out, dim=-1)
+	def forward(self, x, feature_only=False):
+		if feature_only:
+			return self.f(x, True)
+		else:
+			x_f = self.f(x)
+			out = self.g(x_f)
+			return F.normalize(x_f, dim=-1), F.normalize(out, dim=-1)
 
 #SwAV
 class SwAV(nn.Module):
@@ -204,20 +214,23 @@ class SwAV(nn.Module):
 			return x, self.prototypes(x)
 		return x
 
-	def forward(self, inputs):
-		if not isinstance(inputs, list):
-			inputs = [inputs]
-		idx_crops = torch.cumsum(torch.unique_consecutive(
-			torch.tensor([inp.shape[-1] for inp in inputs]),
-			return_counts=True,
-		)[1], 0)
-		start_idx = 0
-		for end_idx in idx_crops:
-			_out = self.forward_backbone(torch.cat(inputs[start_idx: end_idx]).cuda(non_blocking=True))
-			if start_idx == 0:
-				output = _out
-			else:
-				output = torch.cat((output, _out))
-			start_idx = end_idx
-		return self.forward_head(output)
+	def forward(self, inputs, feature_only=False):
+		if feature_only:
+			return self.f(inputs, True)
+		else:
+			if not isinstance(inputs, list):
+				inputs = [inputs]
+			idx_crops = torch.cumsum(torch.unique_consecutive(
+				torch.tensor([inp.shape[-1] for inp in inputs]),
+				return_counts=True,
+			)[1], 0)
+			start_idx = 0
+			for end_idx in idx_crops:
+				_out = self.forward_backbone(torch.cat(inputs[start_idx: end_idx]).cuda(non_blocking=True))
+				if start_idx == 0:
+					output = _out
+				else:
+					output = torch.cat((output, _out))
+				start_idx = end_idx
+			return self.forward_head(output)
 
