@@ -50,6 +50,26 @@ def make_aug(resolution):
 	]
 	return TwoCropsTransform(transforms.Compose(train_augmentation)), transforms.Compose(test_augmentation)
 
+def make_aug_transfer(resolution, dataset):
+	if 'cifar' in dataset:
+		norm = transforms.Normalize(mean=[0.4914, 0.4822, 0.4465],
+										   std=[0.247, 0.243, 0.261])
+	else:
+		norm = transforms.Normalize(mean=[0.4376821, 0.4437697, 0.47280442],
+									std=[0.19803012, 0.20101562, 0.19703614])
+	train_augmentation = [
+		transforms.RandomResizedCrop(resolution, scale=(0.2, 1.)),
+		transforms.RandomHorizontalFlip(),
+		transforms.ToTensor(),
+		norm
+	]
+	test_augmentation = [
+		transforms.Resize(resolution),
+		transforms.ToTensor(),
+		norm
+	]
+	return transforms.Compose(train_augmentation), transforms.Compose(test_augmentation)
+
 def save_checkpoint(state, is_best, filename='checkpoint.pth.tar', best_name='model_best.pth.tar'):
 	torch.save(state, filename)
 	if is_best:
@@ -113,7 +133,7 @@ def accuracy(output, target, topk=(1,)):
 
 		res = []
 		for k in topk:
-			correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
+			correct_k = correct[:k].reshape(-1).float().sum(0, keepdim=True)
 			res.append(correct_k.mul_(100.0 / batch_size))
 		return res
 
